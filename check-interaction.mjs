@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {frameTarget,easeFrame} from './app/scrub.ts';
+assert.equal(frameTarget(0,1000),0);assert.equal(frameTarget(500,1000),40);assert.equal(frameTarget(1000,1000),80);assert.equal(frameTarget(-20,1000),0);assert.equal(frameTarget(2000,1000),80);assert.ok(Number.isFinite(frameTarget(0,0)));let x=0;for(let i=0;i<60;i++)x=easeFrame(x,80,16);assert.ok(x>79.9&&x<=80);assert.ok(easeFrame(40,0,16)<40);assert.equal(easeFrame(40,40,16),40);console.log('Position mapping and smoothing checks passed');
+import {backgroundMask} from './app/matte.ts';
+const pixels=new Uint8ClampedArray(7*7*4);
+for(let p=0;p<49;p++)pixels.set([239,240,240,255],p*4);
+for(let y=1;y<6;y++)for(let x=1;x<6;x++)pixels.set([240,200,135,255],(y*7+x)*4);
+pixels.set([255,255,255,255],(3*7+3)*4);
+const mask=backgroundMask(pixels,7,7);
+assert.equal(mask[0],1);assert.equal(mask[24],0);assert.equal(mask[8],0);
+console.log('Neutral background removed; cream body and enclosed highlight preserved.');
