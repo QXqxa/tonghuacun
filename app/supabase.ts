@@ -26,9 +26,11 @@ export async function listPhotos() {
   });
 }
 
-export async function uploadPhotos(email: string, password: string, files: File[]) {
+export async function uploadPhotos(password: string, files: File[]) {
   const db = supabase();
   if (!db) throw new Error('在线相册正在配置，请稍后再试。');
+  const email = window.TONGHUACUN_CONFIG?.adminEmail;
+  if (!email) throw new Error('管理员账号正在配置，请稍后再试。');
   const { data: sessionData } = await db.auth.getSession();
   if (!sessionData.session) {
     const { error } = await db.auth.signInWithPassword({ email, password });
@@ -38,7 +40,7 @@ export async function uploadPhotos(email: string, password: string, files: File[
   for (const file of files) {
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const title = file.name.replace(/\.[^.]+$/, '');
-    const safeTitle = encodeURIComponent(title).replace(/%/g, '_');
+    const safeTitle = encodeURIComponent(title);
     const path = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}-${safeTitle}.${ext}`;
     const { error } = await db.storage.from('photos').upload(path, file, {
       cacheControl: '86400', contentType: file.type, upsert: false,
