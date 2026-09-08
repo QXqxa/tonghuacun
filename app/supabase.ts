@@ -28,7 +28,7 @@ export async function listPhotos() {
   });
 }
 
-export async function uploadPhotos(password: string, files: File[]) {
+export async function uploadPhotos(password: string, photos: { file: File; title: string }[]) {
   const db = supabase();
   if (!db) throw new Error('在线相册正在配置，请稍后再试。');
   const email = window.TONGHUACUN_CONFIG?.adminEmail;
@@ -39,9 +39,9 @@ export async function uploadPhotos(password: string, files: File[]) {
     if (error) throw new Error('管理员邮箱或密码不正确');
   }
   const uploaded = [];
-  for (const file of files) {
+  for (const { file, title: requestedTitle } of photos) {
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const title = file.name.replace(/\.[^.]+$/, '');
+    const title = requestedTitle.trim().slice(0, 80) || file.name.replace(/\.[^.]+$/, '');
     const safeTitle = Array.from(new TextEncoder().encode(title), value => value.toString(16).padStart(2, '0')).join('');
     const path = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}-${safeTitle}.${ext}`;
     const { error } = await db.storage.from('photos').upload(path, file, {

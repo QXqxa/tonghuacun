@@ -24,3 +24,5 @@
 /* Restore continuous edges; lift the source gray background to page white. */
 .hero-media{filter:brightness(1.07);mask-image:linear-gradient(to right,transparent,#000 10%,#000 92%,transparent)}
 .upload-key-label{display:grid;gap:8px;font-size:14px}.upload-key-label input{border:1px solid #d5dfcc;border-radius:8px;padding:12px;font-size:16px;min-width:0;width:100%}
+.pending-grid>div{display:grid;gap:6px}.pending-grid input{min-width:0;width:100%;border:1px solid #d5dfcc;border-radius:6px;padding:7px 8px;background:#fff;font-size:12px}.pending-grid img{display:block}
+@media(max-width:600px){.pending-grid{grid-template-columns:repeat(2,1fr);max-height:280px}}
