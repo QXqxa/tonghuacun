@@ -27,6 +27,7 @@ export default function Home(){
  const [uploadKey,setUploadKey]=useState('');const [saving,setSaving]=useState(false);const [albumError,setAlbumError]=useState('');
  const urls=useRef<string[]>([]);
  useEffect(()=>{let interval:ReturnType<typeof setInterval>; const timer=setTimeout(()=>{let n=0;interval=setInterval(()=>{n++;setTyped(greeting.slice(0,n));if(n>=greeting.length)clearInterval(interval)},65)},650);return()=>{clearTimeout(timer);clearInterval(interval)}},[]);
+ useEffect(()=>{document.documentElement.classList.add('reveal-ready');const nodes=[...document.querySelectorAll<HTMLElement>('#album,#events,#sponsors')];nodes.forEach(node=>node.classList.add('reveal-section'));const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('revealed');observer.unobserve(entry.target)}}),{threshold:.12,rootMargin:'0px 0px -8%'});nodes.forEach(node=>observer.observe(node));return()=>observer.disconnect()},[]);
  useEffect(()=>()=>urls.current.forEach(URL.revokeObjectURL),[]);
  useEffect(()=>{let stopped=false;listPhotos().then(all=>{if(!stopped)setPhotos(all)}).catch(()=>{if(!stopped)setAlbumError('相册暂时未能加载，请刷新重试。')});return()=>{stopped=true}},[]);
  useEffect(()=>{
