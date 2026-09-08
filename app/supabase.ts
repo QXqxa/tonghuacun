@@ -22,7 +22,9 @@ export async function listPhotos() {
   return data.filter(item => item.id).map(item => {
     const { data: publicData } = db.storage.from('photos').getPublicUrl(item.name);
     const raw = item.name.replace(/^\d+-[a-f0-9]+-/, '').replace(/\.[^.]+$/, '');
-    return { src: publicData.publicUrl, name: decodeURIComponent(raw.replace(/_/g, '%')), note: '童话村相册' };
+    const bytes = raw.match(/^(?:[a-f0-9]{2})+$/i)?.[0].match(/.{2}/g)?.map(value => parseInt(value, 16));
+    const title = bytes ? new TextDecoder().decode(new Uint8Array(bytes)) : '童话村照片';
+    return { src: publicData.publicUrl, name: title, note: '童话村相册' };
   });
 }
 
@@ -40,7 +42,7 @@ export async function uploadPhotos(password: string, files: File[]) {
   for (const file of files) {
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const title = file.name.replace(/\.[^.]+$/, '');
-    const safeTitle = encodeURIComponent(title);
+    const safeTitle = Array.from(new TextEncoder().encode(title), value => value.toString(16).padStart(2, '0')).join('');
     const path = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}-${safeTitle}.${ext}`;
     const { error } = await db.storage.from('photos').upload(path, file, {
       cacheControl: '86400', contentType: file.type, upsert: false,
