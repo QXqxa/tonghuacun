@@ -24,7 +24,7 @@ export async function listPhotos() {
     const raw = item.name.replace(/^\d+-[a-f0-9]+-/, '').replace(/\.[^.]+$/, '');
     const bytes = raw.match(/^(?:[a-f0-9]{2})+$/i)?.[0].match(/.{2}/g)?.map(value => parseInt(value, 16));
     const title = bytes ? new TextDecoder().decode(new Uint8Array(bytes)) : '童话村照片';
-    return { src: publicData.publicUrl, name: title, note: '童话村相册' };
+    return { src: publicData.publicUrl, name: title, note: '童话村相册', path: item.name };
   });
 }
 
@@ -33,11 +33,8 @@ export async function uploadPhotos(password: string, photos: { file: File; title
   if (!db) throw new Error('在线相册正在配置，请稍后再试。');
   const email = window.TONGHUACUN_CONFIG?.adminEmail;
   if (!email) throw new Error('管理员账号正在配置，请稍后再试。');
-  const { data: sessionData } = await db.auth.getSession();
-  if (!sessionData.session) {
-    const { error } = await db.auth.signInWithPassword({ email, password });
-    if (error) throw new Error('管理员邮箱或密码不正确');
-  }
+  const { error: signInError } = await db.auth.signInWithPassword({ email, password });
+  if (signInError) throw new Error('上传口令不正确');
   const uploaded = [];
   for (const { file, title: requestedTitle } of photos) {
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
@@ -49,7 +46,17 @@ export async function uploadPhotos(password: string, photos: { file: File; title
     });
     if (error) throw error;
     const { data } = db.storage.from('photos').getPublicUrl(path);
-    uploaded.push({ src: data.publicUrl, name: title, note: '童话村相册' });
+    uploaded.push({ src: data.publicUrl, name: title, note: '童话村相册', path });
   }
   return uploaded;
+}
+
+export async function deletePhoto(password: string, path: string) {
+  const db = supabase();
+  const email = window.TONGHUACUN_CONFIG?.adminEmail;
+  if (!db || !email) throw new Error('在线相册正在配置，请稍后再试。');
+  const { error: signInError } = await db.auth.signInWithPassword({ email, password });
+  if (signInError) throw new Error('上传口令不正确');
+  const { error } = await db.storage.from('photos').remove([path]);
+  if (error) throw error;
 }

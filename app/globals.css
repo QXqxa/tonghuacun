@@ -26,3 +26,4 @@
 .upload-key-label{display:grid;gap:8px;font-size:14px}.upload-key-label input{border:1px solid #d5dfcc;border-radius:8px;padding:12px;font-size:16px;min-width:0;width:100%}
 .pending-grid>div{display:grid;gap:6px}.pending-grid input{min-width:0;width:100%;border:1px solid #d5dfcc;border-radius:6px;padding:7px 8px;background:#fff;font-size:12px}.pending-grid img{display:block}
 @media(max-width:600px){.pending-grid{grid-template-columns:repeat(2,1fr);max-height:280px}}
+.lightbox-bottom .delete-photo{color:#ad442d;background:#fff0ec}.delete-dialog{max-width:440px!important;border-radius:18px;padding:30px!important;gap:20px!important}.delete-confirm{width:100%;border-radius:99px;padding:12px 18px;background:#a53d28;color:#fff}.delete-confirm:hover{background:#8d2f1e}
