@@ -28,7 +28,7 @@ export default function Home(){
  const urls=useRef<string[]>([]);
  useEffect(()=>{let interval:ReturnType<typeof setInterval>; const timer=setTimeout(()=>{let n=0;interval=setInterval(()=>{n++;setTyped(greeting.slice(0,n));if(n>=greeting.length)clearInterval(interval)},65)},650);return()=>{clearTimeout(timer);clearInterval(interval)}},[]);
  useEffect(()=>()=>urls.current.forEach(URL.revokeObjectURL),[]);
- useEffect(()=>{let stopped=false;listPhotos().then(all=>{if(!stopped)setPhotos([...all,...samples.filter(p=>!all.some(item=>item.name===p.name))])}).catch(()=>{if(!stopped)setAlbumError('相册暂时未能加载，请刷新重试。')});return()=>{stopped=true}},[]);
+ useEffect(()=>{let stopped=false;listPhotos().then(all=>{if(!stopped)setPhotos(all)}).catch(()=>{if(!stopped)setAlbumError('相册暂时未能加载，请刷新重试。')});return()=>{stopped=true}},[]);
  useEffect(()=>{
   const el=canvas.current;const ctx=el?.getContext('2d');if(!el||!ctx)return;
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');const touch=matchMedia('(pointer: coarse)');
