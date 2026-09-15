@@ -82,6 +82,41 @@ export async function saveAlbumCover(password: string, albumName: string, source
   return db.storage.from('photos').getPublicUrl(path).data.publicUrl;
 }
 
+export async function renameAlbum(password: string, oldName: string, newName: string, photos: { path?: string; src: string }[], coverSrc?: string) {
+  const db = supabase();
+  const email = window.TONGHUACUN_CONFIG?.adminEmail;
+  if (!db || !email) throw new Error('在线相册正在配置，请稍后再试。');
+  const { error: signInError } = await db.auth.signInWithPassword({ email, password });
+  if (signInError) throw new Error('上传口令不正确');
+  const album = newName.trim().slice(0, 40);
+  if (!album || album === PUBLIC_ALBUM) throw new Error('请输入新的个人相册名称。');
+  const folder = `album-${hexEncode(album)}`;
+  const moved: { oldPath: string; path: string; src: string }[] = [];
+  for (const photo of photos) {
+    if (!photo.path) continue;
+    const response = await fetch(photo.src);
+    if (!response.ok) throw new Error('相册照片读取失败，请重试。');
+    const blob = await response.blob();
+    const filename = photo.path.split('/').pop()!;
+    const path = `${folder}/${filename}`;
+    const { error } = await db.storage.from('photos').upload(path, blob, { cacheControl: '86400', contentType: blob.type || 'image/jpeg', upsert: false });
+    if (error) throw error;
+    moved.push({ oldPath: photo.path, path, src: db.storage.from('photos').getPublicUrl(path).data.publicUrl });
+  }
+  if (coverSrc) {
+    const response = await fetch(coverSrc);
+    if (!response.ok) throw new Error('相册封面读取失败，请重试。');
+    const blob = await response.blob();
+    const ext = blob.type.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg';
+    const path = `covers/cover-${hexEncode(album)}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+    const { error } = await db.storage.from('photos').upload(path, blob, { cacheControl: '86400', contentType: blob.type || 'image/jpeg', upsert: false });
+    if (error) throw error;
+  }
+  const { error: removeError } = await db.storage.from('photos').remove(moved.map(photo => photo.oldPath));
+  if (removeError) throw removeError;
+  return moved;
+}
+
 export async function uploadPhotos(password: string, albumName: string, photos: { file: File; title: string }[]) {
   const db = supabase();
   if (!db) throw new Error('在线相册正在配置，请稍后再试。');
