@@ -2,7 +2,8 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 let client: SupabaseClient | null | undefined;
 export const PUBLIC_ALBUM = '公共相册';
-export type GuestbookMessage = { id: number; nickname: string; content: string; createdAt: string; updatedAt?: string; likes: number; liked: boolean };
+export type GuestbookMessage = { id: number; nickname: string; content: string; createdAt: string; updatedAt?: string; likes: number; liked: boolean; comments: number; commented: boolean };
+export type GuestbookComment = { id: number; messageId: number; nickname: string; content: string; createdAt: string };
 export const rankGuestbookMessages = (items: GuestbookMessage[]) => [...items].sort((a, b) => b.likes - a.likes);
 
 const hexEncode = (value: string) => Array.from(new TextEncoder().encode(value), byte => byte.toString(16).padStart(2, '0')).join('');
@@ -38,19 +39,24 @@ async function deviceHash() {
 }
 
 const likedIds = () => { try { return new Set<number>(JSON.parse(localStorage.getItem('tonghuacun-liked-messages') || '[]')); } catch { return new Set<number>(); } };
+const commentedIds = () => { try { return new Set<number>(JSON.parse(localStorage.getItem('tonghuacun-commented-messages') || '[]')); } catch { return new Set<number>(); } };
 
 export async function listGuestbook() {
   const db = supabase();
   if (!db) return [] as GuestbookMessage[];
-  const [{ data: messages, error }, { data: likes, error: likesError }] = await Promise.all([
+  const [{ data: messages, error }, { data: likes, error: likesError }, { data: comments, error: commentsError }] = await Promise.all([
     db.from('guestbook_messages').select('id,nickname,content,created_at,updated_at').order('created_at', { ascending: false }).limit(100),
     db.from('guestbook_likes').select('message_id').limit(5000),
+    db.from('guestbook_comments').select('message_id').limit(5000),
   ]);
-  if (error || likesError) throw error || likesError;
+  if (error || likesError || commentsError) throw error || likesError || commentsError;
   const counts = new Map<number, number>();
   for (const like of likes ?? []) counts.set(like.message_id, (counts.get(like.message_id) ?? 0) + 1);
+  const commentCounts = new Map<number, number>();
+  for (const comment of comments ?? []) commentCounts.set(comment.message_id, (commentCounts.get(comment.message_id) ?? 0) + 1);
   const liked = likedIds();
-  return (messages ?? []).map(message => ({ id: message.id, nickname: message.nickname, content: message.content, createdAt: message.created_at, updatedAt: message.updated_at || undefined, likes: counts.get(message.id) ?? 0, liked: liked.has(message.id) }));
+  const commented = commentedIds();
+  return (messages ?? []).map(message => ({ id: message.id, nickname: message.nickname, content: message.content, createdAt: message.created_at, updatedAt: message.updated_at || undefined, likes: counts.get(message.id) ?? 0, liked: liked.has(message.id), comments: commentCounts.get(message.id) ?? 0, commented: commented.has(message.id) }));
 }
 
 export async function postGuestbookMessage(nickname: string, content: string) {
@@ -60,7 +66,7 @@ export async function postGuestbookMessage(nickname: string, content: string) {
   if (error?.code === '23505') throw new Error('这台设备已经留下过留言了。');
   if (error) throw error;
   localStorage.setItem('tonghuacun-message-posted', '1');
-  return { id: data.id, nickname: data.nickname, content: data.content, createdAt: data.created_at, likes: 0, liked: false } as GuestbookMessage;
+  return { id: data.id, nickname: data.nickname, content: data.content, createdAt: data.created_at, likes: 0, liked: false, comments: 0, commented: false } as GuestbookMessage;
 }
 
 export async function likeGuestbookMessage(messageId: number) {
@@ -71,6 +77,25 @@ export async function likeGuestbookMessage(messageId: number) {
   if (error) throw error;
   const liked = likedIds(); liked.add(messageId);
   localStorage.setItem('tonghuacun-liked-messages', JSON.stringify([...liked]));
+}
+
+export async function listGuestbookComments(messageId: number) {
+  const db = supabase();
+  if (!db) return [] as GuestbookComment[];
+  const { data, error } = await db.from('guestbook_comments').select('id,message_id,nickname,content,created_at').eq('message_id', messageId).order('created_at', { ascending: true }).limit(200);
+  if (error) throw error;
+  return (data ?? []).map(comment => ({ id: comment.id, messageId: comment.message_id, nickname: comment.nickname, content: comment.content, createdAt: comment.created_at }));
+}
+
+export async function postGuestbookComment(messageId: number, nickname: string, content: string) {
+  const db = supabase();
+  if (!db) throw new Error('评论功能正在配置，请稍后再试。');
+  const { data, error } = await db.from('guestbook_comments').insert({ message_id: messageId, nickname: nickname.trim(), content: content.trim(), device_hash: await deviceHash() }).select('id,message_id,nickname,content,created_at').single();
+  if (error?.code === '23505') throw new Error('这台设备已经评论过这条留言了。');
+  if (error) throw error;
+  const commented = commentedIds(); commented.add(messageId);
+  localStorage.setItem('tonghuacun-commented-messages', JSON.stringify([...commented]));
+  return { id: data.id, messageId: data.message_id, nickname: data.nickname, content: data.content, createdAt: data.created_at } as GuestbookComment;
 }
 
 export async function updateGuestbookMessage(password: string, id: number, nickname: string, content: string) {
