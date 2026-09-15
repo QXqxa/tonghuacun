@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 let client: SupabaseClient | null | undefined;
 export const PUBLIC_ALBUM = '公共相册';
 export type GuestbookMessage = { id: number; nickname: string; content: string; createdAt: string; updatedAt?: string; likes: number; liked: boolean };
+export const rankGuestbookMessages = (items: GuestbookMessage[]) => [...items].sort((a, b) => b.likes - a.likes);
 
 const hexEncode = (value: string) => Array.from(new TextEncoder().encode(value), byte => byte.toString(16).padStart(2, '0')).join('');
 const hexDecode = (value: string) => {

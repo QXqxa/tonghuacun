@@ -9,3 +9,7 @@ pixels.set([255,255,255,255],(3*7+3)*4);
 const mask=backgroundMask(pixels,7,7);
 assert.equal(mask[0],1);assert.equal(mask[24],0);assert.equal(mask[8],0);
 console.log('Neutral background removed; cream body and enclosed highlight preserved.');
+import {rankGuestbookMessages} from './app/supabase.ts';
+const ranked=rankGuestbookMessages([{id:1,likes:2},{id:2,likes:7},{id:3,likes:4}]);
+assert.deepEqual(ranked.map(message=>message.id),[2,3,1]);
+console.log('Guestbook messages rank from most to least liked.');
