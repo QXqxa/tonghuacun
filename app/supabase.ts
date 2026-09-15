@@ -46,6 +46,42 @@ export async function listPhotos() {
   return [...photos, ...grouped.flat()];
 }
 
+export async function listAlbumCovers() {
+  const db = supabase();
+  if (!db) return {} as Record<string, string>;
+  const { data, error } = await db.storage.from('photos').list('covers', {
+    limit: 1000, sortBy: { column: 'created_at', order: 'desc' },
+  });
+  if (error) throw error;
+  const covers: Record<string, string> = {};
+  for (const item of data.filter(item => item.id)) {
+    const encoded = item.name.match(/^cover-([a-f0-9]+)-\d+-/i)?.[1];
+    const album = encoded ? hexDecode(encoded) : '';
+    if (album && !covers[album]) covers[album] = db.storage.from('photos').getPublicUrl(`covers/${item.name}`).data.publicUrl;
+  }
+  return covers;
+}
+
+export async function saveAlbumCover(password: string, albumName: string, source: File | { src: string }) {
+  const db = supabase();
+  const email = window.TONGHUACUN_CONFIG?.adminEmail;
+  if (!db || !email) throw new Error('在线相册正在配置，请稍后再试。');
+  const { error: signInError } = await db.auth.signInWithPassword({ email, password });
+  if (signInError) throw new Error('上传口令不正确');
+  const file = source instanceof File ? source : await fetch(source.src).then(async response => {
+    if (!response.ok) throw new Error('封面照片读取失败，请重试。');
+    const blob = await response.blob();
+    return new File([blob], 'album-cover', { type: blob.type || 'image/jpeg' });
+  });
+  if (!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type) || file.size > 20 * 1024 * 1024) throw new Error('请选择 20 MB 以内的 JPG、PNG、WebP 或 GIF。');
+  const ext = file.type.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg';
+  const album = albumName.trim().slice(0, 40) || PUBLIC_ALBUM;
+  const path = `covers/cover-${hexEncode(album)}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+  const { error } = await db.storage.from('photos').upload(path, file, { cacheControl: '86400', contentType: file.type, upsert: false });
+  if (error) throw error;
+  return db.storage.from('photos').getPublicUrl(path).data.publicUrl;
+}
+
 export async function uploadPhotos(password: string, albumName: string, photos: { file: File; title: string }[]) {
   const db = supabase();
   if (!db) throw new Error('在线相册正在配置，请稍后再试。');
