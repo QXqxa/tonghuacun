@@ -98,6 +98,16 @@ export async function postGuestbookComment(messageId: number, nickname: string, 
   return { id: data.id, messageId: data.message_id, nickname: data.nickname, content: data.content, createdAt: data.created_at } as GuestbookComment;
 }
 
+export async function deleteGuestbookComment(password: string, id: number) {
+  const db = supabase();
+  const email = window.TONGHUACUN_CONFIG?.adminEmail;
+  if (!db || !email) throw new Error('评论管理正在配置，请稍后再试。');
+  const { error: signInError } = await db.auth.signInWithPassword({ email, password });
+  if (signInError) throw new Error('上传口令不正确');
+  const { error } = await db.from('guestbook_comments').delete().eq('id', id);
+  if (error) throw error;
+}
+
 export async function updateGuestbookMessage(password: string, id: number, nickname: string, content: string) {
   const db = supabase();
   const email = window.TONGHUACUN_CONFIG?.adminEmail;

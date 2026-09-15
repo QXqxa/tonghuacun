@@ -13,3 +13,7 @@ import {rankGuestbookMessages} from './app/supabase.ts';
 const ranked=rankGuestbookMessages([{id:1,likes:2},{id:2,likes:7},{id:3,likes:4}]);
 assert.deepEqual(ranked.map(message=>message.id),[2,3,1]);
 console.log('Guestbook messages rank from most to least liked.');
+import {scaledDimensions} from './app/photos.ts';
+assert.deepEqual(scaledDimensions(6000,4000),{width:2560,height:1707});
+assert.deepEqual(scaledDimensions(1200,800),{width:1200,height:800});
+console.log('Large photo dimensions are reduced without upscaling small photos.');
