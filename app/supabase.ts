@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 let client: SupabaseClient | null | undefined;
 export const PUBLIC_ALBUM = '公共相册';
-export type GuestbookMessage = { id: number; nickname: string; content: string; createdAt: string; likes: number; liked: boolean };
+export type GuestbookMessage = { id: number; nickname: string; content: string; createdAt: string; updatedAt?: string; likes: number; liked: boolean };
 
 const hexEncode = (value: string) => Array.from(new TextEncoder().encode(value), byte => byte.toString(16).padStart(2, '0')).join('');
 const hexDecode = (value: string) => {
@@ -42,14 +42,14 @@ export async function listGuestbook() {
   const db = supabase();
   if (!db) return [] as GuestbookMessage[];
   const [{ data: messages, error }, { data: likes, error: likesError }] = await Promise.all([
-    db.from('guestbook_messages').select('id,nickname,content,created_at').order('created_at', { ascending: false }).limit(100),
+    db.from('guestbook_messages').select('id,nickname,content,created_at,updated_at').order('created_at', { ascending: false }).limit(100),
     db.from('guestbook_likes').select('message_id').limit(5000),
   ]);
   if (error || likesError) throw error || likesError;
   const counts = new Map<number, number>();
   for (const like of likes ?? []) counts.set(like.message_id, (counts.get(like.message_id) ?? 0) + 1);
   const liked = likedIds();
-  return (messages ?? []).map(message => ({ id: message.id, nickname: message.nickname, content: message.content, createdAt: message.created_at, likes: counts.get(message.id) ?? 0, liked: liked.has(message.id) }));
+  return (messages ?? []).map(message => ({ id: message.id, nickname: message.nickname, content: message.content, createdAt: message.created_at, updatedAt: message.updated_at || undefined, likes: counts.get(message.id) ?? 0, liked: liked.has(message.id) }));
 }
 
 export async function postGuestbookMessage(nickname: string, content: string) {
@@ -70,6 +70,28 @@ export async function likeGuestbookMessage(messageId: number) {
   if (error) throw error;
   const liked = likedIds(); liked.add(messageId);
   localStorage.setItem('tonghuacun-liked-messages', JSON.stringify([...liked]));
+}
+
+export async function updateGuestbookMessage(password: string, id: number, nickname: string, content: string) {
+  const db = supabase();
+  const email = window.TONGHUACUN_CONFIG?.adminEmail;
+  if (!db || !email) throw new Error('留言板正在配置，请稍后再试。');
+  const { error: signInError } = await db.auth.signInWithPassword({ email, password });
+  if (signInError) throw new Error('上传口令不正确');
+  const updatedAt = new Date().toISOString();
+  const { error } = await db.from('guestbook_messages').update({ nickname: nickname.trim(), content: content.trim(), updated_at: updatedAt }).eq('id', id);
+  if (error) throw error;
+  return updatedAt;
+}
+
+export async function deleteGuestbookMessage(password: string, id: number) {
+  const db = supabase();
+  const email = window.TONGHUACUN_CONFIG?.adminEmail;
+  if (!db || !email) throw new Error('留言板正在配置，请稍后再试。');
+  const { error: signInError } = await db.auth.signInWithPassword({ email, password });
+  if (signInError) throw new Error('上传口令不正确');
+  const { error } = await db.from('guestbook_messages').delete().eq('id', id);
+  if (error) throw error;
 }
 
 export async function listPhotos() {
