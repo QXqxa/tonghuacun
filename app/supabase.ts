@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 let client: SupabaseClient | null | undefined;
 export const PUBLIC_ALBUM = '公共相册';
+export type GuestbookMessage = { id: number; nickname: string; content: string; createdAt: string; likes: number; liked: boolean };
 
 const hexEncode = (value: string) => Array.from(new TextEncoder().encode(value), byte => byte.toString(16).padStart(2, '0')).join('');
 const hexDecode = (value: string) => {
@@ -25,6 +26,50 @@ function supabase() {
     ? createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: true } })
     : null;
   return client;
+}
+
+async function deviceHash() {
+  const key = 'tonghuacun-device-id';
+  let id = localStorage.getItem(key);
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem(key, id); }
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(id));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+const likedIds = () => { try { return new Set<number>(JSON.parse(localStorage.getItem('tonghuacun-liked-messages') || '[]')); } catch { return new Set<number>(); } };
+
+export async function listGuestbook() {
+  const db = supabase();
+  if (!db) return [] as GuestbookMessage[];
+  const [{ data: messages, error }, { data: likes, error: likesError }] = await Promise.all([
+    db.from('guestbook_messages').select('id,nickname,content,created_at').order('created_at', { ascending: false }).limit(100),
+    db.from('guestbook_likes').select('message_id').limit(5000),
+  ]);
+  if (error || likesError) throw error || likesError;
+  const counts = new Map<number, number>();
+  for (const like of likes ?? []) counts.set(like.message_id, (counts.get(like.message_id) ?? 0) + 1);
+  const liked = likedIds();
+  return (messages ?? []).map(message => ({ id: message.id, nickname: message.nickname, content: message.content, createdAt: message.created_at, likes: counts.get(message.id) ?? 0, liked: liked.has(message.id) }));
+}
+
+export async function postGuestbookMessage(nickname: string, content: string) {
+  const db = supabase();
+  if (!db) throw new Error('留言板正在配置，请稍后再试。');
+  const { data, error } = await db.from('guestbook_messages').insert({ nickname: nickname.trim(), content: content.trim(), device_hash: await deviceHash() }).select('id,nickname,content,created_at').single();
+  if (error?.code === '23505') throw new Error('这台设备已经留下过留言了。');
+  if (error) throw error;
+  localStorage.setItem('tonghuacun-message-posted', '1');
+  return { id: data.id, nickname: data.nickname, content: data.content, createdAt: data.created_at, likes: 0, liked: false } as GuestbookMessage;
+}
+
+export async function likeGuestbookMessage(messageId: number) {
+  const db = supabase();
+  if (!db) throw new Error('留言板正在配置，请稍后再试。');
+  const { error } = await db.from('guestbook_likes').insert({ message_id: messageId, device_hash: await deviceHash() });
+  if (error?.code === '23505') throw new Error('你已经给这条留言点过赞了。');
+  if (error) throw error;
+  const liked = likedIds(); liked.add(messageId);
+  localStorage.setItem('tonghuacun-liked-messages', JSON.stringify([...liked]));
 }
 
 export async function listPhotos() {
