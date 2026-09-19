@@ -15,7 +15,6 @@ const ALL_ALBUMS='全部照片';
 const sponsors = [ ['梦之终结','1550W'],['飞琼','1000W'],['快乐剑客 007','500W'],['圣诞丶 1230','500W'],['Yyttoo','500W'],['擂辣椒皮蛋','500W'],['纠结丶','500W'],['过不去丶','500W'],['廿年之前','500W'],['闪亮晨星','500W'],['喜洋洋睡不醒','500W'],['汤二蛋','500W'],['神奇小豆来啦','500W'],['希喵','500W'],['疯狂牛市','500W'],['波吉','88.8RMB'],['茶尔思','88.88RMB'],['炫彩任又欠','88.88RMB'],['FS 丶劫','88.88RMB'],['月落弯','88.88RMB'] ];
 const events=[['08.13','童话村建村','我们的故事，从这一天开始。'],['08.20','第一次进村大会','自由市场58线1洞'],['08.26','第二次进村大会','自由市场58线17洞']];
 const honors=[
- {name:'小蓝天丶',job:'勇士',date:'2026.09.10',image:'honor-xiaolantian.png'},
  {name:'华福证券李鑫',job:'龙骑士',date:'2026.09.13',image:'honor-huafu.png'},
 ];
 const messageTime=(value:string)=>new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(value));
